@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+
+# Generated code: do not reformat
+apps/api/src/generated
+apps/api/prisma/migrations
+
+# shadcn/ui components are managed by the shadcn CLI; keep them as generated
+apps/web/src/components/ui
