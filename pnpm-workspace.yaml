@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm blocks dependency install scripts unless they are approved here.
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true

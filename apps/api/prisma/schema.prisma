@@ -1,0 +1,14 @@
+// Prisma schema for the Reclo API.
+// Docs: https://pris.ly/d/prisma-schema
+//
+// The connection URL is not set here: Prisma 7 reads it from prisma7.config.ts.
+// Models are intentionally absent; they are added starting with KAN-66.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
