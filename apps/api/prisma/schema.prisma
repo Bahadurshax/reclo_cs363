@@ -2,7 +2,7 @@
 // Docs: https://pris.ly/d/prisma-schema
 //
 // The connection URL is not set here: Prisma 7 reads it from prisma7.config.ts.
-// Models are intentionally absent; they are added starting with KAN-66.
+// Models: User and Session (KAN-67).
 
 generator client {
   provider = "prisma-client"
@@ -11,4 +11,31 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  CLIENT
+  VENDOR
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique // stored trimmed and lowercased
+  passwordHash String
+  role         Role      @default(CLIENT)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique // SHA-256 hex of the cookie token; the raw token is never stored
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
