@@ -1,8 +1,14 @@
 import { createApp } from './app'
-import { checkDatabase } from './db'
+import { createPrismaAuthStore } from './auth/prisma-store'
+import { checkDatabase, prisma } from './db'
 import { env } from './env'
 
-const app = createApp({ checkDatabase, corsOrigin: env.CORS_ORIGIN })
+const app = createApp({
+  checkDatabase,
+  authStore: createPrismaAuthStore(prisma),
+  corsOrigin: env.CORS_ORIGIN,
+  secureCookies: process.env['NODE_ENV'] === 'production',
+})
 
 app.listen(env.PORT, () => {
   console.log(`API listening on http://localhost:${env.PORT}`)

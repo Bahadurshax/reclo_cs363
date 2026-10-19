@@ -1,21 +1,41 @@
-import type { HealthResponse } from '@reclo/shared'
+import type { ApiError, HealthResponse } from '@reclo/shared'
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import express, { type Express } from 'express'
+import express, { type ErrorRequestHandler, type Express } from 'express'
+import { createRequireAuth } from './auth/middleware'
+import { createAuthRouter } from './auth/routes'
+import type { AuthStore } from './auth/store'
 
 export interface AppDependencies {
   /** Rejects when the database cannot be reached. */
   checkDatabase: () => Promise<void>
-  /** Origin allowed by CORS. Omit to disable CORS headers. */
+  /** Users and sessions. */
+  authStore: AuthStore
+  /** Origin allowed by CORS (with credentials). Omit to disable CORS headers. */
   corsOrigin?: string
+  /** Clock, injectable for session expiry tests. */
+  now?: () => Date
+  /** Max register + login requests per IP per 15 minutes. Defaults to 20. */
+  authRateLimitMax?: number
+  /** Set the Secure flag on the session cookie (production). */
+  secureCookies?: boolean
 }
 
-export function createApp({ checkDatabase, corsOrigin }: AppDependencies): Express {
+export function createApp({
+  checkDatabase,
+  authStore,
+  corsOrigin,
+  now = () => new Date(),
+  authRateLimitMax = 20,
+  secureCookies = false,
+}: AppDependencies): Express {
   const app = express()
 
   if (corsOrigin) {
-    app.use(cors({ origin: corsOrigin }))
+    app.use(cors({ origin: corsOrigin, credentials: true }))
   }
   app.use(express.json())
+  app.use(cookieParser())
 
   app.get('/health', async (_req, res) => {
     try {
@@ -26,6 +46,30 @@ export function createApp({ checkDatabase, corsOrigin }: AppDependencies): Expre
       res.status(503).json({ status: 'error' } satisfies HealthResponse)
     }
   })
+
+  const requireAuth = createRequireAuth(authStore, now)
+  app.use(
+    '/api/auth',
+    createAuthRouter({
+      store: authStore,
+      requireAuth,
+      now,
+      rateLimitMax: authRateLimitMax,
+      secureCookies,
+    }),
+  )
+
+  // Express identifies error handlers by their four parameters, so `next` must stay.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+    if (error?.type === 'entity.parse.failed') {
+      res.status(400).json({ error: 'Malformed JSON' } satisfies ApiError)
+      return
+    }
+    console.error('Unhandled error', error)
+    res.status(500).json({ error: 'Something went wrong' } satisfies ApiError)
+  }
+  app.use(errorHandler)
 
   return app
 }
