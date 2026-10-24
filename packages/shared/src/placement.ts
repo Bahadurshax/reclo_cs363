@@ -1,0 +1,60 @@
+import { z } from 'zod'
+
+export const placementTypeSchema = z.enum(['BILLBOARD', 'LED_SCREEN', 'WALL_MURAL', 'CITY_FORMAT'])
+export type PlacementType = z.infer<typeof placementTypeSchema>
+
+export const placementStatusSchema = z.enum(['ACTIVE', 'PENDING_REVIEW', 'INACTIVE', 'ARCHIVED'])
+export type PlacementStatus = z.infer<typeof placementStatusSchema>
+
+export const mapBoundsQuerySchema = z
+  .object({
+    minLat: z.coerce.number().min(-90).max(90),
+    maxLat: z.coerce.number().min(-90).max(90),
+    minLng: z.coerce.number().min(-180).max(180),
+    maxLng: z.coerce.number().min(-180).max(180),
+    type: placementTypeSchema.optional(),
+    city: z.string().trim().optional(),
+    minPrice: z.coerce.number().int().nonnegative().optional(),
+    maxPrice: z.coerce.number().int().positive().optional(),
+  })
+  .refine((data) => data.minLat <= data.maxLat, {
+    message: 'minLat must be less than or equal to maxLat',
+    path: ['minLat'],
+  })
+  .refine((data) => data.minLng <= data.maxLng, {
+    message: 'minLng must be less than or equal to maxLng',
+    path: ['minLng'],
+  })
+export type MapBoundsQuery = z.infer<typeof mapBoundsQuerySchema>
+
+export const placementMarkerSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  type: placementTypeSchema,
+  status: placementStatusSchema,
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  address: z.string(),
+  city: z.string(),
+  pricePerMonth: z.number().int().nonnegative(),
+  photo: z.string().url().optional(),
+})
+export type PlacementMarker = z.infer<typeof placementMarkerSchema>
+
+export const mapMarkersResponseSchema = z.object({
+  markers: z.array(placementMarkerSchema),
+  total: z.number().int().nonnegative(),
+})
+export type MapMarkersResponse = z.infer<typeof mapMarkersResponseSchema>
+
+export const placementDetailSchema = placementMarkerSchema.extend({
+  description: z.string().nullable(),
+  width: z.number().nullable(),
+  height: z.number().nullable(),
+  lighting: z.boolean(),
+  photos: z.array(z.string().url()),
+  vendorId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+export type PlacementDetail = z.infer<typeof placementDetailSchema>

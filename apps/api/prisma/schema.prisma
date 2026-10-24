@@ -2,7 +2,7 @@
 // Docs: https://pris.ly/d/prisma-schema
 //
 // The connection URL is not set here: Prisma 7 reads it from prisma7.config.ts.
-// Models are intentionally absent; they are added starting with KAN-66.
+// Models: User and Placement (KAN-23).
 
 generator client {
   provider = "prisma-client"
@@ -11,4 +11,60 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  CLIENT
+  VENDOR
+  ADMIN
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique // stored trimmed and lowercased
+  passwordHash String
+  role         Role        @default(CLIENT)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  placements   Placement[]
+}
+
+enum PlacementType {
+  BILLBOARD
+  LED_SCREEN
+  WALL_MURAL
+  CITY_FORMAT
+}
+
+enum PlacementStatus {
+  ACTIVE
+  PENDING_REVIEW
+  INACTIVE
+  ARCHIVED
+}
+
+model Placement {
+  id            String          @id @default(uuid())
+  title         String
+  description   String?
+  type          PlacementType   @default(BILLBOARD)
+  status        PlacementStatus @default(PENDING_REVIEW)
+  latitude      Float
+  longitude     Float
+  address       String
+  city          String
+  pricePerMonth Int             // Stored as integer in UZS
+  width         Float?          // Width in meters
+  height        Float?          // Height in meters
+  lighting      Boolean         @default(false)
+  photos        String[]        @default([])
+  vendorId      String
+  vendor        User            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([city])
+  @@index([latitude, longitude])
 }
